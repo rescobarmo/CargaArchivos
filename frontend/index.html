@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Carga de Archivos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233b82f6' rx='15'/%3E%3Cpath d='M30 40 L50 60 L70 40' stroke='white' stroke-width='8' fill='none'/%3E%3C/svg%3E" />
+  <style>
+    .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    #dropZone { cursor: pointer; position: relative; z-index: 1; }
+    #fileInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white shadow-sm border-b">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+      <h1 class="text-2xl font-bold text-gray-800">Dashboard de Archivos</h1>
+      <p class="text-sm text-gray-500">Carga, gestiona y previsualiza tus archivos</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <section class="bg-white rounded-xl shadow-sm border p-6">
+      <h2 class="text-lg font-semibold text-gray-700 mb-4">Subir nuevo archivo</h2>
+
+      <div id="dropZone" class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer transition-all hover:border-blue-400 hover:bg-blue-50/30">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <p class="mt-2 text-sm text-gray-600">Arrastra un archivo aqui o <span class="text-blue-600 font-medium">haz clic para seleccionar</span></p>
+        <p class="mt-1 text-xs text-gray-400">JPG, PNG, GIF, WebP, PDF, DOCX, XLSX, TXT, CSV — Max. 10MB</p>
+      </div>
+      <input id="fileInput" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" />
+
+      <div id="previewArea" class="hidden mt-4 p-4 bg-gray-50 rounded-lg border">
+        <div class="flex items-start gap-4">
+          <div id="previewThumb" class="w-20 h-20 rounded-lg bg-white border flex items-center justify-center overflow-hidden shrink-0"></div>
+          <div class="flex-1 min-w-0 space-y-2">
+            <p id="previewName" class="text-sm font-medium text-gray-800 truncate"></p>
+            <p id="previewSize" class="text-xs text-gray-500"></p>
+            <input id="titleInput" type="text" placeholder="Titulo (opcional)" class="w-full text-sm border rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <textarea id="descInput" placeholder="Descripcion (opcional)" rows="2" class="w-full text-sm border rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+            <input id="tagsInput" type="text" placeholder="Etiquetas separadas por coma" class="w-full text-sm border rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <button id="uploadBtn" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">Subir archivo</button>
+          <button id="cancelBtn" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Cancelar</button>
+        </div>
+      </div>
+
+      <div id="uploadProgress" class="hidden mt-4">
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+        </div>
+        <p id="progressText" class="text-xs text-gray-500 mt-1">Subiendo...</p>
+      </div>
+
+      <div id="alertBox" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow-sm border p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-700">Archivos cargados</h2>
+        <div class="flex gap-2">
+          <button data-filter="all" class="filter-btn px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Todos</button>
+          <button data-filter="image" class="filter-btn px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">Imagenes</button>
+          <button data-filter="texto" class="filter-btn px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">Documentos</button>
+          <button data-filter="xls" class="filter-btn px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">Hojas de calculo</button>
+        </div>
+      </div>
+      <div id="fileList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p id="emptyState" class="col-span-full text-center text-sm text-gray-400 py-8">No hay archivos cargados aun.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
