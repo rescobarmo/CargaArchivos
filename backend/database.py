@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 import pymysql
 from pymysql.cursors import DictCursor
 
@@ -58,9 +59,9 @@ def _infer_mysql_type(value) -> str:
 
 
 def import_excel_to_mysql(file_path, table_name: str) -> dict:
-    ext = str(file_path).lower()
+    ext = Path(file_path).suffix.lower()
     
-    if ext.endswith('.xls'):
+    if ext == '.xls':
         return _import_xls(file_path, table_name)
     else:
         return _import_xlsx(file_path, table_name)
