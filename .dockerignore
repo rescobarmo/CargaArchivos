@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+backend/uploads/*
+!backend/uploads/imagen/
+!backend/uploads/texto/
+!backend/uploads/xls/
+!backend/uploads/thumbnails/
+data/metadata.json
+.vscode
+.idea
+*.md
+.env
+.env.local
