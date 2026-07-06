@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
-from config import ALLOWED_EXTENSIONS, BASE_DIR
+from config import ALLOWED_EXTENSIONS, BASE_DIR, UPLOAD_IMAGEN, UPLOAD_TEXTO, UPLOAD_XLS
 from metadata import add_entry, build_entry, delete_entry, get_entry, list_entries
 import storage
 from storage import get_thumbnail_path, get_upload_path
@@ -24,6 +24,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/uploads/imagen", StaticFiles(directory=UPLOAD_IMAGEN), name="uploads_imagen")
+app.mount("/uploads/texto", StaticFiles(directory=UPLOAD_TEXTO), name="uploads_texto")
+app.mount("/uploads/xls", StaticFiles(directory=UPLOAD_XLS), name="uploads_xls")
 
 
 def _categorize(ext: str) -> str:

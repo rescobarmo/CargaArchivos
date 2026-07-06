@@ -1,6 +1,11 @@
 const API = "/api";
+const UPLOADS_BASE = "/uploads";
 const MAX_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EXT = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"];
+
+function getFileUrl(file) {
+  return `${UPLOADS_BASE}/${file.category}/${file.stored_name}`;
+}
 
 const $ = (id) => document.getElementById(id);
 const dropZone = $("dropZone");
@@ -187,18 +192,12 @@ function renderFiles(files) {
     const card = document.createElement("div");
     card.className = "fade-in border rounded-lg p-3 bg-gray-50 hover:shadow-md transition-shadow";
 
-    const thumbUrl = f.mime_type.startsWith("image/")
-      ? `${API}/files/${f.id}/thumbnail`
-      : null;
-
-    const iconForDoc = () => {
-      const ext = getExt(f.original_name).replace(".", "").toUpperCase();
-      return `<div class="w-full h-32 bg-white rounded flex items-center justify-center"><span class="text-lg font-bold text-gray-400">${ext || "FILE"}</span></div>`;
-    };
-
-    const thumbHtml = thumbUrl 
-      ? `<img src="${thumbUrl}" class="w-full h-full object-cover" />`
-      : iconForDoc();
+    const fileUrl = getFileUrl(f);
+    const isImage = f.mime_type.startsWith("image/");
+    
+    const thumbHtml = isImage
+      ? `<img src="${fileUrl}" class="w-full h-full object-cover" />`
+      : `<div class="w-full h-32 bg-white rounded flex items-center justify-center"><span class="text-lg font-bold text-gray-400">${getExt(f.original_name).replace(".", "").toUpperCase() || "FILE"}</span></div>`;
 
     card.innerHTML = `
       <div class="w-full h-32 bg-white rounded mb-2 overflow-hidden flex items-center justify-center border">
@@ -208,7 +207,7 @@ function renderFiles(files) {
       <p class="text-xs text-gray-500">${formatSize(f.size_bytes)} &middot; ${f.category}</p>
       ${f.tags.length ? `<div class="flex flex-wrap gap-1 mt-1">${f.tags.map((t) => `<span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">${t}</span>`).join("")}</div>` : ""}
       <div class="flex gap-2 mt-2">
-        <a href="${API}/files/${f.id}/download" class="flex-1 text-center text-xs bg-blue-600 text-white py-1.5 rounded hover:bg-blue-700">Descargar</a>
+        <a href="${fileUrl}" target="_blank" class="flex-1 text-center text-xs bg-blue-600 text-white py-1.5 rounded hover:bg-blue-700">Ver/Descargar</a>
         <button data-id="${f.id}" class="delete-btn flex-1 text-xs bg-red-100 text-red-700 py-1.5 rounded hover:bg-red-200">Eliminar</button>
       </div>
     `;
