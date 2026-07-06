@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads/imagen", StaticFiles(directory=UPLOAD_IMAGEN), name="uploads_imagen")
+app.mount("/uploads/image", StaticFiles(directory=UPLOAD_IMAGEN), name="uploads_imagen")
 app.mount("/uploads/texto", StaticFiles(directory=UPLOAD_TEXTO), name="uploads_texto")
 app.mount("/uploads/xls", StaticFiles(directory=UPLOAD_XLS), name="uploads_xls")
 
