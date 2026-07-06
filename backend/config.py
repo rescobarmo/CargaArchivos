@@ -46,6 +46,9 @@ DEFAULT_MYSQL_CONFIG = {
 }
 
 def load_mysql_config():
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Primero intentar variables de entorno (para Docker)
     env_config = {
         "host": os.getenv("MYSQL_HOST"),
@@ -56,20 +59,33 @@ def load_mysql_config():
         "charset": "utf8mb4",
     }
     
+    logger.info(f"Environment variables - MYSQL_HOST: {env_config['host']}, MYSQL_USER: {env_config['user']}")
+    
     # Si hay variables de entorno configuradas, usarlas
     if env_config["host"]:
+        logger.info("Using environment variables for MySQL config")
         return env_config
     
     # Si no, usar archivo de configuración
     if DB_CONFIG_FILE.exists():
         try:
             with open(DB_CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                config = json.load(f)
+                logger.info("Using db_config.json for MySQL config")
+                return config
         except Exception:
             pass
+    
+    logger.info("Using default MySQL config")
     return DEFAULT_MYSQL_CONFIG.copy()
 
 MYSQL_CONFIG = load_mysql_config()
+
+# Log the loaded config (without password)
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info(f"Loaded MySQL config: host={MYSQL_CONFIG.get('host')}, port={MYSQL_CONFIG.get('port')}, user={MYSQL_CONFIG.get('user')}, database={MYSQL_CONFIG.get('database')}")
 
 for d in (UPLOAD_IMAGEN, UPLOAD_TEXTO, UPLOAD_XLS, THUMBNAILS_DIR):
     d.mkdir(parents=True, exist_ok=True)
