@@ -13,13 +13,10 @@ COPY . .
 RUN mkdir -p backend/uploads/imagen backend/uploads/texto backend/uploads/xls backend/uploads/thumbnails data
 
 # Configurar variables de entorno
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/backend
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 
 EXPOSE 8000
 
-# Cambiar al directorio backend para que funcione el import
-WORKDIR /app/backend
-
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --app-dir /app/backend"]
