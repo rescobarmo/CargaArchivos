@@ -232,6 +232,10 @@ async def send_list(
 ):
     import json
     import httpx
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Received send-list request for number: {number}")
     
     try:
         sections = json.loads(sections_json)
@@ -261,11 +265,14 @@ async def send_list(
                 timeout=30.0
             )
             
+            logger.info(f"Evolution API response: {response.status_code}")
+            
             if response.status_code == 200:
                 return {"success": True, "message": "Lista enviada correctamente", "data": response.json()}
             else:
                 return {"success": False, "message": f"Error de Evolution API: {response.text}"}
     except Exception as e:
+        logger.error(f"Error connecting to Evolution API: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error al conectar con Evolution API: {str(e)}")
 
 
