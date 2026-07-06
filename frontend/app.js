@@ -136,7 +136,16 @@ uploadBtn.addEventListener("click", async () => {
       uploadProgress.classList.add("hidden");
       uploadBtn.disabled = false;
       if (xhr.status >= 200 && xhr.status < 300) {
-        showAlert("Archivo subido correctamente", "success");
+        const res = JSON.parse(xhr.responseText);
+        let msg = "Archivo subido correctamente";
+        if (res.mysql) {
+          if (res.mysql.error) {
+            msg += ` | MySQL error: ${res.mysql.error}`;
+          } else if (res.mysql.rows !== undefined) {
+            msg += ` | MySQL: tabla "${res.mysql.table}", ${res.mysql.rows} filas, ${res.mysql.columns} columnas`;
+          }
+        }
+        showAlert(msg, "success");
         hidePreview();
         loadFiles();
       } else {
