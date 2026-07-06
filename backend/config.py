@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,6 +46,21 @@ DEFAULT_MYSQL_CONFIG = {
 }
 
 def load_mysql_config():
+    # Primero intentar variables de entorno (para Docker)
+    env_config = {
+        "host": os.getenv("MYSQL_HOST"),
+        "port": int(os.getenv("MYSQL_PORT", 3306)),
+        "user": os.getenv("MYSQL_USER"),
+        "password": os.getenv("MYSQL_PASSWORD", ""),
+        "database": os.getenv("MYSQL_DATABASE", "carga_archivos"),
+        "charset": "utf8mb4",
+    }
+    
+    # Si hay variables de entorno configuradas, usarlas
+    if env_config["host"]:
+        return env_config
+    
+    # Si no, usar archivo de configuración
     if DB_CONFIG_FILE.exists():
         try:
             with open(DB_CONFIG_FILE, "r", encoding="utf-8") as f:
