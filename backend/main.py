@@ -221,6 +221,54 @@ async def test_db_config(
         return {"success": False, "message": str(e)}
 
 
+@app.post("/api/send-list")
+async def send_list(
+    number: str = Form(...),
+    title: str = Form(...),
+    description: str = Form(""),
+    button_text: str = Form(...),
+    footer_text: str = Form(""),
+    sections_json: str = Form(...),
+):
+    import json
+    import httpx
+    
+    try:
+        sections = json.loads(sections_json)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"JSON de secciones invalido: {str(e)}")
+    
+    payload = {
+        "number": number,
+        "title": title,
+        "description": description,
+        "buttonText": button_text,
+        "footerText": footer_text,
+        "sections": sections
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "apikey": "41CF2568B6F0-4101-91B6-710026FB5B13"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://rsr-evolution-api.jdseuk.easypanel.host/message/sendList/bluepay",
+                json=payload,
+                headers=headers,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                return {"success": True, "message": "Lista enviada correctamente", "data": response.json()}
+            else:
+                return {"success": False, "message": f"Error de Evolution API: {response.text}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al conectar con Evolution API: {str(e)}")
+
+
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 
