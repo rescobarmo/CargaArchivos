@@ -2,8 +2,12 @@ import re
 from pathlib import Path
 import pymysql
 from pymysql.cursors import DictCursor
+import logging
 
 from config import MYSQL_CONFIG
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _connect(use_db=True):
@@ -70,13 +74,16 @@ def import_excel_to_mysql(file_path, table_name: str) -> dict:
 def _import_xls(file_path, table_name: str) -> dict:
     import xlrd
     
+    logger.info(f"Importing XLS file: {file_path}")
     wb = xlrd.open_workbook(file_path)
     ws = wb.sheet_by_index(0)
+    logger.info(f"Sheet has {ws.nrows} rows and {ws.ncols} columns")
     
     if ws.nrows == 0:
         return {"table": table_name, "rows": 0, "columns": 0, "error": "Archivo vacio"}
     
     raw_headers = [ws.cell_value(0, col) for col in range(ws.ncols)]
+    logger.info(f"Raw headers: {raw_headers}")
     
     headers = []
     seen = {}
@@ -88,6 +95,7 @@ def _import_xls(file_path, table_name: str) -> dict:
         else:
             seen[col] = 0
         headers.append(col)
+    logger.info(f"Sanitized headers: {headers}")
     
     if not headers:
         return {"table": table_name, "rows": 0, "columns": 0, "error": "Sin columnas"}
@@ -96,6 +104,7 @@ def _import_xls(file_path, table_name: str) -> dict:
     for row_idx in range(1, ws.nrows):
         row = [ws.cell_value(row_idx, col) for col in range(ws.ncols)]
         data_rows.append(row)
+    logger.info(f"Read {len(data_rows)} data rows")
     
     col_types = ["TEXT"] * len(headers)
     sample = data_rows[:50]
@@ -107,8 +116,10 @@ def _import_xls(file_path, table_name: str) -> dict:
                 inferred = _infer_mysql_type(val)
                 if inferred != "TEXT":
                     col_types[i] = inferred
-    
+    logger.info(f"Inferred column types: {col_types}")
+
     safe_table = _sanitize_table_name(table_name)
+    logger.info(f"Table name: {safe_table}")
     
     ensure_database()
     conn = _connect()
@@ -128,7 +139,7 @@ def _import_xls(file_path, table_name: str) -> dict:
             col_names = ", ".join(f"`{h}`" for h in headers)
             insert_sql = f"INSERT INTO `{safe_table}` ({col_names}) VALUES ({placeholders})"
             
-            for row in data_rows:
+            for row_idx, row in enumerate(data_rows):
                 values = []
                 for i, val in enumerate(row):
                     if i >= len(headers):
@@ -141,10 +152,19 @@ def _import_xls(file_path, table_name: str) -> dict:
                         values.append(val)
                 while len(values) < len(headers):
                     values.append(None)
-                cur.execute(insert_sql, values)
-                inserted += 1
-        
+                try:
+                    cur.execute(insert_sql, values)
+                    inserted += 1
+                except Exception as e:
+                    logger.error(f"Error inserting row {row_idx}: {e}, values: {values}")
+                    raise
+
         conn.commit()
+        logger.info(f"Successfully inserted {inserted} rows into {safe_table}")
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
     
@@ -158,8 +178,10 @@ def _import_xls(file_path, table_name: str) -> dict:
 def _import_xlsx(file_path, table_name: str) -> dict:
     from openpyxl import load_workbook
 
+    logger.info(f"Importing XLSX file: {file_path}")
     wb = load_workbook(file_path, read_only=True, data_only=True)
     ws = wb.active
+    logger.info(f"Active sheet: {ws.title}")
 
     rows_iter = ws.iter_rows(values_only=True)
 
@@ -167,6 +189,8 @@ def _import_xlsx(file_path, table_name: str) -> dict:
     if raw_headers is None:
         wb.close()
         return {"table": table_name, "rows": 0, "columns": 0, "error": "Archivo vacio"}
+    
+    logger.info(f"Raw headers: {raw_headers}")
 
     headers = []
     seen = {}
@@ -178,6 +202,7 @@ def _import_xlsx(file_path, table_name: str) -> dict:
         else:
             seen[col] = 0
         headers.append(col)
+    logger.info(f"Sanitized headers: {headers}")
 
     if not headers:
         wb.close()
@@ -185,6 +210,7 @@ def _import_xlsx(file_path, table_name: str) -> dict:
 
     data_rows = list(rows_iter)
     wb.close()
+    logger.info(f"Read {len(data_rows)} data rows")
 
     col_types = ["TEXT"] * len(headers)
     sample = data_rows[:50]
@@ -196,8 +222,10 @@ def _import_xlsx(file_path, table_name: str) -> dict:
                 inferred = _infer_mysql_type(val)
                 if inferred != "TEXT":
                     col_types[i] = inferred
+    logger.info(f"Inferred column types: {col_types}")
 
     safe_table = _sanitize_table_name(table_name)
+    logger.info(f"Table name: {safe_table}")
 
     ensure_database()
     conn = _connect()
@@ -217,23 +245,32 @@ def _import_xlsx(file_path, table_name: str) -> dict:
             col_names = ", ".join(f"`{h}`" for h in headers)
             insert_sql = f"INSERT INTO `{safe_table}` ({col_names}) VALUES ({placeholders})"
 
-            for row in data_rows:
+            for row_idx, row in enumerate(data_rows):
                 values = []
                 for i, val in enumerate(row):
                     if i >= len(headers):
                         break
                     if isinstance(val, bool):
                         values.append(int(val))
-                    elif val is None:
+                    elif val is None or val == "":
                         values.append(None)
                     else:
                         values.append(val)
                 while len(values) < len(headers):
                     values.append(None)
-                cur.execute(insert_sql, values)
-                inserted += 1
+                try:
+                    cur.execute(insert_sql, values)
+                    inserted += 1
+                except Exception as e:
+                    logger.error(f"Error inserting row {row_idx}: {e}, values: {values}")
+                    raise
 
         conn.commit()
+        logger.info(f"Successfully inserted {inserted} rows into {safe_table}")
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
