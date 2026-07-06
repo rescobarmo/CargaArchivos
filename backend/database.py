@@ -56,7 +56,23 @@ def _infer_mysql_type(value) -> str:
         return "BIGINT"
     if isinstance(value, float):
         return "DOUBLE"
-    s = str(value)
+    
+    s = str(value).strip()
+    if not s:
+        return None
+    
+    try:
+        int(s)
+        return "BIGINT"
+    except (ValueError, TypeError):
+        pass
+    
+    try:
+        float(s)
+        return "DOUBLE"
+    except (ValueError, TypeError):
+        pass
+    
     if len(s) <= 255:
         return "VARCHAR(255)"
     return "TEXT"
@@ -69,10 +85,18 @@ def _infer_column_types(data_rows, num_columns):
         for i, val in enumerate(row):
             if i >= num_columns:
                 break
+            if val is None:
+                continue
+            
+            inferred = _infer_mysql_type(val)
+            
             if col_types[i] is None:
-                inferred = _infer_mysql_type(val)
-                if inferred is not None:
-                    col_types[i] = inferred
+                col_types[i] = inferred
+            elif inferred != col_types[i]:
+                if col_types[i] in ("BIGINT", "DOUBLE") and inferred not in ("BIGINT", "DOUBLE"):
+                    col_types[i] = "VARCHAR(255)"
+                elif col_types[i] == "VARCHAR(255)" and inferred == "TEXT":
+                    col_types[i] = "TEXT"
     
     for i in range(num_columns):
         if col_types[i] is None:
