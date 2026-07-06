@@ -7,7 +7,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
-from config import ALLOWED_EXTENSIONS, BASE_DIR, UPLOAD_IMAGEN, UPLOAD_TEXTO, UPLOAD_XLS
+from config import ALLOWED_EXTENSIONS, BASE_DIR, UPLOAD_IMAGEN, UPLOAD_TEXTO, UPLOAD_XLS, DEFAULT_MYSQL_CONFIG, DB_CONFIG_FILE, load_mysql_config, MYSQL_CONFIG
+from database import import_excel_to_mysql
 from metadata import add_entry, build_entry, delete_entry, get_entry, list_entries
 import storage
 from storage import get_thumbnail_path, get_upload_path
@@ -97,7 +98,18 @@ async def upload_file(
         tags=tag_list,
     )
     add_entry(entry)
-    return {"message": "Archivo subido correctamente", "file": entry}
+
+    result = {"message": "Archivo subido correctamente", "file": entry}
+
+    if category == "xls":
+        try:
+            table_base = title.strip() if title.strip() else base_name
+            mysql_result = import_excel_to_mysql(dest, table_base)
+            result["mysql"] = mysql_result
+        except Exception as e:
+            result["mysql"] = {"error": str(e)}
+
+    return result
 
 
 @app.get("/api/files")
@@ -150,6 +162,63 @@ async def remove_file(file_id: str):
     if thumb.exists():
         thumb.unlink()
     return {"message": "Archivo eliminado"}
+
+
+@app.get("/api/db-config")
+async def get_db_config():
+    config = load_mysql_config()
+    safe = {k: v for k, v in config.items() if k != "password"}
+    safe["password_set"] = bool(config.get("password"))
+    return {"config": safe}
+
+
+@app.post("/api/db-config")
+async def save_db_config(
+    host: str = Form("localhost"),
+    port: int = Form(3306),
+    user: str = Form("root"),
+    password: str = Form(""),
+    database: str = Form("carga_archivos"),
+):
+    import json
+    new_config = {
+        "host": host,
+        "port": port,
+        "user": user,
+        "password": password,
+        "database": database,
+        "charset": "utf8mb4",
+    }
+    DB_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(DB_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(new_config, f, ensure_ascii=False, indent=2)
+    MYSQL_CONFIG.update(new_config)
+    return {"message": "Configuracion guardada"}
+
+
+@app.post("/api/db-config/test")
+async def test_db_config(
+    host: str = Form("localhost"),
+    port: int = Form(3306),
+    user: str = Form("root"),
+    password: str = Form(""),
+    database: str = Form("carga_archivos"),
+):
+    import pymysql
+    try:
+        conn = pymysql.connect(
+            host=host, port=port, user=user, password=password,
+            charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor,
+        )
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            conn.commit()
+        finally:
+            conn.close()
+        return {"success": True, "message": "Conexion exitosa"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
