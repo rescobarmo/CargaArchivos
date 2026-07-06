@@ -49,7 +49,7 @@ def _sanitize_column_name(name: str) -> str:
 
 def _infer_mysql_type(value) -> str:
     if value is None:
-        return "TEXT"
+        return None
     if isinstance(value, bool):
         return "TINYINT(1)"
     if isinstance(value, int):
@@ -60,6 +60,25 @@ def _infer_mysql_type(value) -> str:
     if len(s) <= 255:
         return "VARCHAR(255)"
     return "TEXT"
+
+
+def _infer_column_types(data_rows, num_columns):
+    col_types = [None] * num_columns
+    
+    for row in data_rows:
+        for i, val in enumerate(row):
+            if i >= num_columns:
+                break
+            if col_types[i] is None:
+                inferred = _infer_mysql_type(val)
+                if inferred is not None:
+                    col_types[i] = inferred
+    
+    for i in range(num_columns):
+        if col_types[i] is None:
+            col_types[i] = "VARCHAR(255)"
+    
+    return col_types
 
 
 def import_excel_to_mysql(file_path, table_name: str) -> dict:
@@ -106,16 +125,7 @@ def _import_xls(file_path, table_name: str) -> dict:
         data_rows.append(row)
     logger.info(f"Read {len(data_rows)} data rows")
     
-    col_types = ["TEXT"] * len(headers)
-    sample = data_rows[:50]
-    for row in sample:
-        for i, val in enumerate(row):
-            if i >= len(headers):
-                break
-            if col_types[i] == "TEXT":
-                inferred = _infer_mysql_type(val)
-                if inferred != "TEXT":
-                    col_types[i] = inferred
+    col_types = _infer_column_types(data_rows, len(headers))
     logger.info(f"Inferred column types: {col_types}")
 
     safe_table = _sanitize_table_name(table_name)
@@ -212,16 +222,7 @@ def _import_xlsx(file_path, table_name: str) -> dict:
     wb.close()
     logger.info(f"Read {len(data_rows)} data rows")
 
-    col_types = ["TEXT"] * len(headers)
-    sample = data_rows[:50]
-    for row in sample:
-        for i, val in enumerate(row):
-            if i >= len(headers):
-                break
-            if col_types[i] == "TEXT":
-                inferred = _infer_mysql_type(val)
-                if inferred != "TEXT":
-                    col_types[i] = inferred
+    col_types = _infer_column_types(data_rows, len(headers))
     logger.info(f"Inferred column types: {col_types}")
 
     safe_table = _sanitize_table_name(table_name)
